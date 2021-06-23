@@ -1,14 +1,24 @@
 'use strict'
+import dgram from 'dgram';
+import { Client } from '../../client';
 
-function Udp (client) {
-  const dgram = require('dgram')
 
+export class Udp  {
+  stack: Array<any>
+  port: number
+  socket: dgram.Socket
+  listener: dgram.Socket
+  client: Client
+
+  constructor(client) {
   this.stack = []
   this.port = null
   this.socket = dgram ? dgram.createSocket('udp4') : null
   this.listener = dgram ? dgram.createSocket('udp4') : null
+  this.client = client
+  }
 
-  this.start = function () {
+  public start() {
     if (!dgram || !this.socket || !this.listener) { console.warn('UDP', 'Could not start.'); return }
     console.info('UDP', 'Starting..')
 
@@ -16,37 +26,37 @@ function Udp (client) {
     this.selectOutput()
   }
 
-  this.clear = function () {
+  public clear(){
     this.stack = []
   }
 
-  this.run = function () {
+  public run(){
     for (const item of this.stack) {
       this.play(item)
     }
   }
 
-  this.push = function (msg) {
+  public push = function (msg) {
     this.stack.push(msg)
   }
 
-  this.play = function (data) {
+  public play = function (data) {
     if (!this.socket) { return }
-    this.socket.send(Buffer.from(`${data}`), this.port, client.io.ip, (err) => {
+    this.socket.send(Buffer.from(`${data}`), this.port, this.client.io.ip, (err) => {
       if (err) { console.warn(err) }
     })
   }
 
-  this.selectOutput = function (port = 49161) {
+  public selectOutput(port = 49161) {
     if (!dgram) { console.warn('UDP', 'Unavailable.'); return }
-    if (parseInt(port) === this.port) { console.warn('UDP', 'Already selected'); return }
+    if (parseInt(port as unknown as string) === this.port) { console.warn('UDP', 'Already selected'); return }
     if (isNaN(port) || port < 1000) { console.warn('UDP', 'Unavailable port'); return }
 
     console.log('UDP', `Output: ${port}`)
-    this.port = parseInt(port)
+    this.port = parseInt(port as unknown as string)
   }
 
-  this.selectInput = (port = 49160) => {
+  public selectInput(port = 49160) {
     if (!dgram) { console.warn('UDP', 'Unavailable.'); return }
     if (this.listener) { this.listener.close() }
 
@@ -54,7 +64,7 @@ function Udp (client) {
     this.listener = dgram.createSocket('udp4')
 
     this.listener.on('message', (msg, rinfo) => {
-      client.commander.trigger(`${msg}`)
+      this.client.commander.trigger(`${msg}`)
     })
 
     this.listener.on('listening', () => {

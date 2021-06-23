@@ -1,29 +1,42 @@
 'use strict'
 
-function Acels (client) {
-  this.all = {}
-  this.roles = {}
-  this.pipe = null
+import { Pipe } from "stream"
+import { Client } from "../client"
+import { Commander } from "../commander"
 
-  this.install = (host = window) => {
+export class Acels {
+  client: Client
+  all: Object
+  roles: Object
+  pipe: Commander
+
+  constructor(client: Client) {
+    this.client = client;
+    this.all = {}
+    this.roles = {}
+    this.pipe = null
+  }
+
+
+  public install(host = window) {
     host.addEventListener('keydown', this.onKeyDown, false)
     host.addEventListener('keyup', this.onKeyUp, false)
   }
 
-  this.set = (cat, name, accelerator, downfn, upfn) => {
+  public set(cat, name, accelerator, downfn, upfn?) {
     if (this.all[accelerator]) { console.warn('Acels', `Trying to overwrite ${this.all[accelerator].name}, with ${name}.`) }
     this.all[accelerator] = { cat, name, downfn, upfn, accelerator }
   }
 
-  this.add = (cat, role) => {
+  public add(cat, role) {
     this.all[':' + role] = { cat, name: role, role }
   }
 
-  this.get = (accelerator) => {
+  public get(accelerator) {
     return this.all[accelerator]
   }
 
-  this.sort = () => {
+  public sort() {
     const h = {}
     for (const item of Object.values(this.all)) {
       if (!h[item.cat]) { h[item.cat] = [] }
@@ -32,7 +45,7 @@ function Acels (client) {
     return h
   }
 
-  this.convert = (event) => {
+  public convert(event) {
     const accelerator = event.key === ' ' ? 'Space' : event.key.substr(0, 1).toUpperCase() + event.key.substr(1)
     if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
       return `CmdOrCtrl+Shift+${accelerator}`
@@ -49,25 +62,25 @@ function Acels (client) {
     return accelerator
   }
 
-  this.pipe = (obj) => {
+  public setPipe(obj: Commander): void {
     this.pipe = obj
   }
 
-  this.onKeyDown = (e) => {
+  public onKeyDown(e) {
     const target = this.get(this.convert(e))
     if (!target || !target.downfn) { return this.pipe ? this.pipe.onKeyDown(e) : null }
     target.downfn()
     e.preventDefault()
   }
 
-  this.onKeyUp = (e) => {
+  public onKeyUp = (e) => {
     const target = this.get(this.convert(e))
     if (!target || !target.upfn) { return this.pipe ? this.pipe.onKeyUp(e) : null }
     target.upfn()
     e.preventDefault()
   }
 
-  this.toMarkdown = () => {
+  public toMarkdown = () => {
     const cats = this.sort()
     let text = ''
     for (const cat in cats) {
@@ -79,7 +92,7 @@ function Acels (client) {
     return text.trim()
   }
 
-  this.toString = () => {
+  public toString = () => {
     const cats = this.sort()
     let text = ''
     for (const cat in cats) {
@@ -93,7 +106,7 @@ function Acels (client) {
 
   // Electron specifics
 
-  this.inject = (name = 'Untitled') => {
+  public inject(name = 'Untitled') {
     const app = require('electron').remote.app
     const injection = []
 
@@ -105,8 +118,8 @@ function Acels (client) {
           label: 'Theme',
           submenu: [
             { label: 'Download Themes', click: () => { require('electron').shell.openExternal('https://github.com/hundredrabbits/Themes') } },
-            { label: 'Open Theme', click: () => { client.theme.open() } },
-            { label: 'Reset Theme', accelerator: 'CmdOrCtrl+Escape', click: () => { client.theme.reset() } }
+            { label: 'Open Theme', click: () => { this.client.theme.open() } },
+            { label: 'Reset Theme', accelerator: 'CmdOrCtrl+Escape', click: () => { this.client.theme.reset() } }
           ]
         },
         { label: 'Fullscreen', accelerator: 'CmdOrCtrl+Enter', click: () => { app.toggleFullscreen() } },

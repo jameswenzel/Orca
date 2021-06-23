@@ -1,44 +1,97 @@
-'use strict'
+import { Clock } from "./clock"
+import { Commander } from "./commander"
+import { Library } from "./core/Library2"
+import { Orca } from "./core/orca"
+import { Cursor } from "./cursor"
+import { Acels } from "./lib/acels"
+import { History } from "./lib/history"
+import { Source } from "./lib/source"
+import { Theme } from "./lib/theme"
+import { IO } from './core/io'
+import { Operator } from "./core/operator"
 
-/* global library */
-/* global Acels */
-/* global Source */
-/* global History */
-/* global Orca */
-/* global IO */
-/* global Cursor */
-/* global Commander */
-/* global Clock */
-/* global Theme */
+type Grid = {
+  w: number
+  h: number
+  ws?: number
+  hs?: number
+}
 
-function Client () {
-  this.version = 178
-  this.library = library
+export class Client {
+  version: number
+  theme: Theme
+  source: Source
+  history: History
+  acels: Acels
+  orca: Orca
+  io: IO
+  cursor: Cursor
+  commander: Commander
+  clock: Clock
+  scale: number
+  grid: Grid
+  tile: Grid
+  guide: boolean
+  el: HTMLCanvasElement
+  context: CanvasRenderingContext2D
+  library;
+  ports: any[]
 
-  this.theme = new Theme(this)
-  this.acels = new Acels(this)
-  this.source = new Source(this)
-  this.history = new History(this)
 
-  this.orca = new Orca(this.library)
-  this.io = new IO(this)
-  this.cursor = new Cursor(this)
-  this.commander = new Commander(this)
-  this.clock = new Clock(this)
+  constructor() {
+    this.version = 178
 
-  // Settings
-  this.scale = window.devicePixelRatio
-  this.grid = { w: 8, h: 8 }
-  this.tile = {
-    w: +localStorage.getItem('tilew') || 10,
-    h: +localStorage.getItem('tileh') || 15
+    this.theme = new Theme(this)
+    this.acels = new Acels(this)
+    this.source = new Source(this)
+    this.history = new History(this)
+
+    this.orca = new Orca(this)
+    this.io = new IO(this)
+    this.cursor = new Cursor(this)
+    this.commander = new Commander(this)
+    this.clock = new Clock(this)
+
+    // Settings
+    this.scale = window.devicePixelRatio
+    this.grid = { w: 8, h: 8 }
+    this.tile = {
+      w: +localStorage.getItem('tilew') || 10,
+      h: +localStorage.getItem('tileh') || 15
+    }
+    this.guide = false
+
+    this.el = document.createElement('canvas')
+    this.context = this.el.getContext('2d')
+
+    // Events
+
+    window.addEventListener('dragover', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'copy'
+    })
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      // bug?
+      for (let i = 0; i < e.dataTransfer.files.length; i++) {
+        const file = e.dataTransfer.files.item(i);
+        if (file.name.indexOf('.orca') < 0) { continue }
+        this.toggleGuide(false)
+        this.source.read(file, null, true)
+        this.commander.start('inject:' + file.name.replace('.orca', ''))
+      }
+    })
+
+    window.onresize = (e) => {
+      this.resize()
+    }
+
   }
-  this.guide = false
 
-  this.el = document.createElement('canvas')
-  this.context = this.el.getContext('2d')
-
-  this.install = (host) => {
+  public install(host) {
     host.appendChild(this.el)
     this.theme.install(host)
 
@@ -122,10 +175,10 @@ function Client () {
     this.acels.set('Communication', 'Choose UDP Port', 'alt+U', () => { this.commander.start('udp:') })
 
     this.acels.install(window)
-    this.acels.pipe(this.commander)
+    this.acels.setPipe(this.commander)
   }
 
-  this.start = () => {
+  public start = () => {
     console.info('Client', 'Starting..')
     console.info(`${this.acels}`)
     this.theme.start()
@@ -143,7 +196,7 @@ function Client () {
     this.toggleGuide()
   }
 
-  this.reset = () => {
+  public reset = () => {
     this.orca.reset()
     this.resize()
     this.source.new()
@@ -152,7 +205,7 @@ function Client () {
     this.clock.play()
   }
 
-  this.run = () => {
+  public run = () => {
     this.io.clear()
     this.clock.run()
     this.orca.run()
@@ -160,7 +213,7 @@ function Client () {
     this.update()
   }
 
-  this.update = () => {
+  public update = () => {
     if (document.hidden === true) { return }
     this.clear()
     this.ports = this.findPorts()
@@ -169,7 +222,7 @@ function Client () {
     this.drawGuide()
   }
 
-  this.whenOpen = (file, text) => {
+  public whenOpen = (file, text) => {
     const lines = text.trim().split(/\r?\n/)
     const w = lines[0].length
     const h = lines.length
@@ -181,19 +234,19 @@ function Client () {
     this.resize()
   }
 
-  this.setGrid = (w, h) => {
+  public setGrid = (w, h) => {
     this.grid.w = w
     this.grid.h = h
     this.update()
   }
 
-  this.toggleRetina = () => {
+  public toggleRetina = () => {
     this.scale = this.scale === 1 ? window.devicePixelRatio : 1
     console.log('Client', `Pixel resolution: ${this.scale}`)
-    this.resize(true)
+    this.resize(/*true*/)
   }
 
-  this.toggleGuide = (force = null) => {
+  public toggleGuide = (force = null) => {
     const display = force !== null ? force : this.guide !== true
     if (display === this.guide) { return }
     console.log('Client', `Toggle Guide: ${display}`)
@@ -201,47 +254,47 @@ function Client () {
     this.update()
   }
 
-  this.modGrid = (x = 0, y = 0) => {
-    const w = clamp(this.grid.w + x, 4, 16)
-    const h = clamp(this.grid.h + y, 4, 16)
+  public modGrid = (x = 0, y = 0) => {
+    const w = this.clamp(this.grid.w + x, 4, 16)
+    const h = this.clamp(this.grid.h + y, 4, 16)
     this.setGrid(w, h)
   }
 
-  this.modZoom = (mod = 0, reset = false) => {
+  public modZoom = (mod = 0, reset = false) => {
     this.tile = {
       w: reset ? 10 : this.tile.w * (mod + 1),
       h: reset ? 15 : this.tile.h * (mod + 1),
       ws: Math.floor(this.tile.w * this.scale),
       hs: Math.floor(this.tile.h * this.scale)
     }
-    localStorage.setItem('tilew', this.tile.w)
-    localStorage.setItem('tileh', this.tile.h)
-    this.resize(true)
+    localStorage.setItem('tilew', this.tile.w.toString())
+    localStorage.setItem('tileh', this.tile.h.toString())
+    this.resize(/*true*/)
   }
 
   //
 
-  this.isCursor = (x, y) => {
+  public isCursor = (x, y) => {
     return x === this.cursor.x && y === this.cursor.y
   }
 
-  this.isMarker = (x, y) => {
+  public isMarker = (x, y) => {
     return x % this.grid.w === 0 && y % this.grid.h === 0
   }
 
-  this.isNear = (x, y) => {
-    return x > (parseInt(this.cursor.x / this.grid.w) * this.grid.w) - 1 && x <= ((1 + parseInt(this.cursor.x / this.grid.w)) * this.grid.w) && y > (parseInt(this.cursor.y / this.grid.h) * this.grid.h) - 1 && y <= ((1 + parseInt(this.cursor.y / this.grid.h)) * this.grid.h)
+  public isNear = (x, y) => {
+    return x > (parseInt(this.cursor.x / this.grid.w as unknown as string) * this.grid.w) - 1 && x <= ((1 + parseInt(this.cursor.x / this.grid.w as unknown as string)) * this.grid.w) && y > (parseInt(this.cursor.y / this.grid.h as unknown as string) * this.grid.h) - 1 && y <= ((1 + parseInt(this.cursor.y / this.grid.h as unknown as string)) * this.grid.h)
   }
 
-  this.isLocals = (x, y) => {
+  public isLocals = (x, y) => {
     return this.isNear(x, y) === true && (x % (this.grid.w / 4) === 0 && y % (this.grid.h / 4) === 0) === true
   }
 
-  this.isInvisible = (x, y) => {
+  public isInvisible = (x, y) => {
     return this.orca.glyphAt(x, y) === '.' && !this.isMarker(x, y) && !this.cursor.selected(x, y) && !this.isLocals(x, y) && !this.ports[this.orca.indexAt(x, y)] && !this.orca.lockAt(x, y)
   }
 
-  this.findPorts = () => {
+  public findPorts = () => {
     const a = new Array((this.orca.w * this.orca.h) - 1)
     for (const operator of this.orca.runtime) {
       if (this.orca.lockAt(operator.x, operator.y)) { continue }
@@ -256,7 +309,7 @@ function Client () {
 
   // Interface
 
-  this.makeTheme = (type) => {
+  public makeTheme = (type) => {
     // Operator
     if (type === 0) { return { bg: this.theme.active.b_med, fg: this.theme.active.f_low } }
     // Haste
@@ -287,11 +340,11 @@ function Client () {
 
   // Canvas
 
-  this.clear = () => {
+  public clear = () => {
     this.context.clearRect(0, 0, this.el.width, this.el.height)
   }
 
-  this.drawProgram = () => {
+  public drawProgram = () => {
     const selection = this.cursor.read()
     for (let y = 0; y < this.orca.h; y++) {
       for (let x = 0; x < this.orca.w; x++) {
@@ -307,7 +360,7 @@ function Client () {
     }
   }
 
-  this.makeStyle = (x, y, glyph, selection) => {
+  public makeStyle = (x, y, glyph, selection) => {
     if (this.cursor.selected(x, y)) { return 4 }
     const isLocked = this.orca.lockAt(x, y)
     if (selection === glyph && isLocked === false && selection !== '.') { return 6 }
@@ -318,7 +371,7 @@ function Client () {
     return 20
   }
 
-  this.drawInterface = () => {
+  public drawInterface = () => {
     this.write(`${this.cursor.inspect()}`, this.grid.w * 0, this.orca.h, this.grid.w - 1)
     this.write(`${this.cursor.x},${this.cursor.y}${this.cursor.ins ? '+' : ''}`, this.grid.w * 1, this.orca.h, this.grid.w, this.cursor.ins ? 1 : 2)
     this.write(`${this.cursor.w}:${this.cursor.h}`, this.grid.w * 2, this.orca.h, this.grid.w)
@@ -333,17 +386,17 @@ function Client () {
       this.write(`${this.orca.w}x${this.orca.h}`, this.grid.w * 1, this.orca.h + 1, this.grid.w)
       this.write(`${this.grid.w}/${this.grid.h}${this.tile.w !== 10 ? ' ' + (this.tile.w / 10).toFixed(1) : ''}`, this.grid.w * 2, this.orca.h + 1, this.grid.w)
       this.write(`${this.clock}`, this.grid.w * 3, this.orca.h + 1, this.grid.w, this.clock.isPuppet ? 3 : this.io.midi.isClock ? 11 : this.clock.isPaused ? 20 : 2)
-      this.write(`${display(Object.keys(this.orca.variables).join(''), this.orca.f, this.grid.w - 1)}`, this.grid.w * 4, this.orca.h + 1, this.grid.w - 1)
+      this.write(`${this.display(Object.keys(this.orca.variables).join(''), this.orca.f, this.grid.w - 1)}`, this.grid.w * 4, this.orca.h + 1, this.grid.w - 1)
       this.write(this.orca.f < 250 ? `> ${this.io.midi.toOutputString()}` : '', this.grid.w * 5, this.orca.h + 1, this.grid.w * 4)
     }
   }
 
-  this.drawGuide = () => {
+  public drawGuide = () => {
     if (this.guide !== true) { return }
-    const operators = Object.keys(this.library).filter((val) => { return isNaN(val) })
+    const operators = Object.keys(Library)//.filter((val) => { return isNaN(val) })
     for (const id in operators) {
       const key = operators[id]
-      const oper = new this.library[key]()
+      const oper: Operator = new Library[key]() as Operator
       const text = oper.info
       const frame = this.orca.h - 4
       const x = (Math.floor(parseInt(id) / frame) * 32) + 2
@@ -353,7 +406,7 @@ function Client () {
     }
   }
 
-  this.drawSprite = (x, y, g, type) => {
+  public drawSprite = (x, y, g, type) => {
     const theme = this.makeTheme(type)
     if (theme.bg) {
       this.context.fillStyle = theme.bg
@@ -365,7 +418,7 @@ function Client () {
     }
   }
 
-  this.write = (text, offsetX, offsetY, limit = 50, type = 2) => {
+  public write = (text, offsetX, offsetY, limit = 50, type = 2) => {
     for (let x = 0; x < text.length && x < limit; x++) {
       this.drawSprite(offsetX + x, offsetY, text.substr(x, 1), type)
     }
@@ -373,7 +426,7 @@ function Client () {
 
   // Resize tools
 
-  this.resize = () => {
+  public resize = () => {
     const pad = 30
     const size = { w: window.innerWidth - (pad * 2), h: window.innerHeight - ((pad * 2) + this.tile.h * 2) }
     const tiles = { w: Math.ceil(size.w / this.tile.w), h: Math.ceil(size.h / this.tile.h) }
@@ -407,7 +460,7 @@ function Client () {
     this.update()
   }
 
-  this.crop = (w, h) => {
+  public crop = (w, h) => {
     let block = `${this.orca}`
 
     if (h > this.orca.h) {
@@ -428,42 +481,22 @@ function Client () {
 
   // Docs
 
-  this.docs = () => {
+  public docs = () => {
     let html = ''
-    const operators = Object.keys(library).filter((val) => { return isNaN(val) })
+    const operators = Object.keys(Library)//.filter((val) => { return isNaN(val) })
     for (const id in operators) {
-      const oper = new this.library[operators[id]]()
-      const ports = oper.ports.input ? Object.keys(oper.ports.input).reduce((acc, key, val) => { return acc + ' ' + key }, '') : ''
+      const oper = new Library[operators[id]]() as Operator
+      // there is no input property on ports??
+      // const ports = oper.ports.input ? Object.keys(oper.ports.input).reduce((acc, key, val) => { return acc + ' ' + key }, '') : ''
+      const ports: string = '';
       html += `- \`${oper.glyph.toUpperCase()}\` **${oper.name}**${ports !== '' ? '(' + ports.trim() + ')' : ''}: ${oper.info}.\n`
     }
     return html
   }
 
-  // Events
-
-  window.addEventListener('dragover', (e) => {
-    e.stopPropagation()
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-  })
-
-  window.addEventListener('drop', (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    for (const file of e.dataTransfer.files) {
-      if (file.name.indexOf('.orca') < 0) { continue }
-      this.toggleGuide(false)
-      this.source.read(file, null, true)
-      this.commander.start('inject:' + file.name.replace('.orca', ''))
-    }
-  })
-
-  window.onresize = (e) => {
-    this.resize()
-  }
-
   // Helpers
 
-  function display (str, f, max) { return str.length < max ? str : str.slice(f % str.length) + str.substr(0, f % str.length) }
-  function clamp (v, min, max) { return v < min ? min : v > max ? max : v }
+  private display(str, f, max) { return str.length < max ? str : str.slice(f % str.length) + str.substr(0, f % str.length) }
+  private clamp(v, min, max) { return v < min ? min : v > max ? max : v }
+
 }

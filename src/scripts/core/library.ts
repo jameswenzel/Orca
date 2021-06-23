@@ -1,9 +1,6 @@
 'use strict'
 
-/* global Operator */
-/* global client */
-
-const library = {}
+// const library = {}
 
 library.a = function OperatorA (orca, x, y, passive) {
   Operator.call(this, orca, x, y, 'a', passive)

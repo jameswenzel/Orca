@@ -1,20 +1,28 @@
-'use strict'
+import { Client } from "../../client"
 
-function MidiCC (client) {
-  this.stack = []
-  this.offset = 64
+export class MidiCC{
+  stack: Array<any>
+  offset: number
+  client: Client
 
-  this.start = function () {
+  constructor (client: Client) {
+    this.client = client
+    this.stack = []
+    this.offset = 64
+  }
+  
+
+  public start() {
     console.info('MidiCC', 'Starting..')
   }
 
-  this.clear = function () {
+  public clear = function () {
     this.stack = []
   }
 
-  this.run = function () {
+  public run() {
     if (this.stack.length < 1) { return }
-    const device = client.io.midi.outputDevice()
+    const device = this.client.io.midi.outputDevice()
     if (!device) { console.warn('CC', 'No Midi device.'); return }
     for (const msg of this.stack) {
       if (msg.type === 'cc' && !isNaN(msg.channel) && !isNaN(msg.knob) && !isNaN(msg.value)) {
@@ -31,7 +39,7 @@ function MidiCC (client) {
     }
   }
 
-  this.setOffset = function (offset) {
+  public setOffset (offset: number) {
     if (isNaN(offset)) { return }
     this.offset = offset
     console.log('CC', 'Set offset to ' + this.offset)

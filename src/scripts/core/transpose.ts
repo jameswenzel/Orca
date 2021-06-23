@@ -1,6 +1,6 @@
 'use strict'
 
-const transposeTable = {
+export const transposeTable = {
   A: 'A0',
   a: 'a0',
   B: 'B0',

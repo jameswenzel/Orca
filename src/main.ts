@@ -1,13 +1,25 @@
-'use strict'
-
-/* global createWindow */
-
-const { app, BrowserWindow, Menu } = require('electron')
-const path = require('path')
+import { app, BrowserWindow, Menu } from 'electron'
+import * as path from 'path'
 
 let isShown = true
 
-app.win = null
+function createWindow() {
+  // Create the browser window.
+  const mainWindow = new BrowserWindow({
+    height: 600,
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+    },
+    width: 800,
+  });
+
+  // and load the index.html of the app.
+  mainWindow.loadFile(path.join(__dirname, "../index.html"));
+
+  return mainWindow;
+  // Open the DevTools.
+  // mainWindow.webContents.openDevTools();
+}
 
 app.on('ready', () => {
   app.win = new BrowserWindow({
@@ -24,7 +36,7 @@ app.on('ready', () => {
     webPreferences: { zoomFactor: 1.0, nodeIntegration: true, backgroundThrottling: false }
   })
 
-  app.win.loadURL(`file://${__dirname}/sources/index.html`)
+  app.win.loadURL(`file://${__dirname}/index.html`)
   // app.inspect()
 
   app.win.on('closed', () => {
@@ -52,19 +64,19 @@ app.on('ready', () => {
   })
 })
 
-app.inspect = function () {
+function inspect () {
   app.win.toggleDevTools()
 }
 
-app.toggleFullscreen = function () {
+function toggleFullscreen () {
   app.win.setFullScreen(!app.win.isFullScreen())
 }
 
-app.toggleMenubar = function () {
+function toggleMenubar () {
   app.win.setMenuBarVisibility(!app.win.isMenuBarVisible())
 }
 
-app.toggleVisible = function () {
+function toggleVisible () {
   if (process.platform !== 'darwin') {
     if (!app.win.isMinimized()) { app.win.minimize() } else { app.win.restore() }
   } else {
@@ -72,7 +84,7 @@ app.toggleVisible = function () {
   }
 }
 
-app.injectMenu = function (menu) {
+function injectMenu (menu) {
   try {
     Menu.setApplicationMenu(Menu.buildFromTemplate(menu))
   } catch (err) {

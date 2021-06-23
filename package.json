@@ -28,7 +28,8 @@
     "electron-packager": "^15.1.0"
   },
   "dependencies": {
-    "node-osc": "^4.1.9"
+    "node-osc": "^4.1.9",
+    "typescript": "^4.3.4"
   },
   "standard": {
     "globals": [
