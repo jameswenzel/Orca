@@ -1,16 +1,29 @@
 import { Client } from "../../client"
 
-export class MidiCC{
-  stack: Array<any>
+export type MidiCCMessage = {
+  type: string,
+  channel: number,
+  lsb?: number,
+  msb?: number,
+  value?: number,
+  knob?: number,
+  bank?: number,
+  sub?: number,
+  pgm?: number
+
+}
+
+export class MidiCC {
+  stack: Array<MidiCCMessage>
   offset: number
   client: Client
 
-  constructor (client: Client) {
+  constructor(client: Client) {
     this.client = client
     this.stack = []
     this.offset = 64
   }
-  
+
 
   public start() {
     console.info('MidiCC', 'Starting..')
@@ -39,7 +52,7 @@ export class MidiCC{
     }
   }
 
-  public setOffset (offset: number) {
+  public setOffset(offset: number) {
     if (isNaN(offset)) { return }
     this.offset = offset
     console.log('CC', 'Set offset to ' + this.offset)

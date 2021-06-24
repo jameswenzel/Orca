@@ -1,7 +1,5 @@
-import { app, BrowserWindow, Menu } from 'electron'
+import { app, BrowserWindow, Menu, remote } from 'electron'
 import * as path from 'path'
-
-let isShown = true
 
 function createWindow() {
   // Create the browser window.
@@ -22,12 +20,13 @@ function createWindow() {
 }
 
 app.on('ready', () => {
-  app.win = new BrowserWindow({
+   const mainWindow = new BrowserWindow({
     width: 780,
     height: 462,
     minWidth: 380,
     minHeight: 360,
     backgroundColor: '#000',
+    //@ts-ignore
     icon: path.join(__dirname, { darwin: 'icon.icns', linux: 'icon.png', win32: 'icon.ico' }[process.platform] || 'icon.ico'),
     resizable: true,
     frame: process.platform !== 'darwin',
@@ -36,19 +35,19 @@ app.on('ready', () => {
     webPreferences: { zoomFactor: 1.0, nodeIntegration: true, backgroundThrottling: false }
   })
 
-  app.win.loadURL(`file://${__dirname}/index.html`)
+  mainWindow.loadURL(`file://${__dirname}/index.html`)
   // app.inspect()
 
-  app.win.on('closed', () => {
+  mainWindow.on('closed', () => {
     app.quit()
   })
 
-  app.win.on('hide', function () {
-    isShown = false
+  mainWindow.on('hide', function () {
+    mainWindow.hide()
   })
 
-  app.win.on('show', function () {
-    isShown = true
+  mainWindow.on('show', function () {
+    mainWindow.show()
   })
 
   app.on('window-all-closed', () => {
@@ -56,38 +55,10 @@ app.on('ready', () => {
   })
 
   app.on('activate', () => {
-    if (app.win === null) {
+    if (mainWindow === null) {
       createWindow()
     } else {
-      app.win.show()
+      mainWindow.show()
     }
   })
 })
-
-function inspect () {
-  app.win.toggleDevTools()
-}
-
-function toggleFullscreen () {
-  app.win.setFullScreen(!app.win.isFullScreen())
-}
-
-function toggleMenubar () {
-  app.win.setMenuBarVisibility(!app.win.isMenuBarVisible())
-}
-
-function toggleVisible () {
-  if (process.platform !== 'darwin') {
-    if (!app.win.isMinimized()) { app.win.minimize() } else { app.win.restore() }
-  } else {
-    if (isShown && !app.win.isFullScreen()) { app.win.hide() } else { app.win.show() }
-  }
-}
-
-function injectMenu (menu) {
-  try {
-    Menu.setApplicationMenu(Menu.buildFromTemplate(menu))
-  } catch (err) {
-    console.warn('Cannot inject menu.')
-  }
-}

@@ -1,11 +1,9 @@
-'use strict'
-
 import { Client } from "../../client"
 
 export type Event = {
   channel: number
   octave: number
-  note: number
+  note: string
   velocity: number
   length: number
   isPlayed: boolean
@@ -16,13 +14,13 @@ export type Stack = {
 }
 
 export class Mono {
-  stack: Stack
+  stack: Event[]
   client: Client
 
 
 
-  constructor(client) {
-    this.stack = {}
+  constructor(client: Client) {
+    this.stack = [] // originally was {} with type Stack?
     this.client = client
   }
 
@@ -48,25 +46,26 @@ export class Mono {
     }
   }
 
-  public press(item) {
+  public press(item: Event) {
     if (!item) { return }
     this.client.io.midi.trigger(item, true)
     item.isPlayed = true
   }
 
-  public release(item) {
+  public release(item: Event) {
     if (!item) { return }
     this.client.io.midi.trigger(item, false)
     delete this.stack[item.channel]
   }
 
+  // TODO: bug??
   public silence() {
-    for (const item of Object.keys(this.stack)) {
+    for (const item of this.stack) {
       this.release(item)
     }
   }
 
-  public push(channel, octave, note, velocity, length, isPlayed = false) {
+  public push(channel: number, octave: number, note: string, velocity: number, length: number, isPlayed = false) {
     if (this.stack[channel]) {
       this.release(this.stack[channel])
     }

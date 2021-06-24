@@ -3,6 +3,7 @@
 import { Client } from "../../client";
 import { Event } from "./mono";
 import { transposeTable } from "../transpose";
+import { clamp } from '../../lib/Util'
 
 export class Midi {
   client: Client
@@ -10,10 +11,10 @@ export class Midi {
   isClock: boolean
   outputIndex: number
   inputIndex: number
-  outputs: Array<any>
-  inputs: Array<any>
+  outputs: Array<WebMidi.MIDIOutput>
+  inputs: Array<WebMidi.MIDIInput>
   stack: Array<Event>
-  ticks: Array<any>
+  ticks: Array<NodeJS.Timeout>
 
 
   constructor(client: Client) {
@@ -32,7 +33,7 @@ export class Midi {
 
   }
 
-  public receive(msg) {
+  public receive(msg: WebMidi.MIDIMessageEvent) {
     switch (msg.data[0]) {
       // Clock
       case 0xF8:
@@ -110,7 +111,7 @@ export class Midi {
     if (!this.outputDevice()) { console.warn('MIDI', 'No midi output!'); return }
 
     const transposed = this.transpose(item.note, item.octave)
-    const channel = !isNaN(item.channel as number) ? parseInt(item.channel as unknown as string) : this.client.orca.valueOf(item.channel)
+    const channel = !isNaN(item.channel) ? parseInt(item.channel as unknown as string) : this.client.orca.valueOf(item.channel.toString())
 
     if (!transposed) { return }
 
@@ -136,13 +137,13 @@ export class Midi {
   }
 
   // bug
-  // public silence() {
-  //   for (const item of this.stack) {
-  //     this.release(item, item.id)
-  //   }
-  // }
+  public silence() {
+    this.stack.forEach((item, i) => {
+      this.release(item, i)
+    })
+  }
 
-  public push(channel, octave, note, velocity, length, isPlayed = false) {
+  public push(channel: number, octave: number, note: string, velocity: number, length: number, isPlayed = false) {
     const item = { channel, octave, note, velocity, length, isPlayed }
     // Retrigger duplicates
     for (const id in this.stack) {
@@ -162,21 +163,21 @@ export class Midi {
 
   // Tools
 
-  public selectOutput(id) {
+  public selectOutput(id: number) {
     if (id === -1) { this.outputIndex = -1; console.log('MIDI', 'Select Output Device: None'); return }
     if (!this.outputs[id]) { console.warn('MIDI', `Unknown device with id ${id}`); return }
 
-    this.outputIndex = parseInt(id)
+    this.outputIndex = Math.floor(+id)
     console.log('MIDI', `Select Output Device: ${this.outputDevice().name}`)
   }
 
-  public selectInput(id) {
+  public selectInput(id: number) {
     if (this.inputDevice()) { this.inputDevice().onmidimessage = null }
     if (id === -1) { this.inputIndex = -1; console.log('MIDI', 'Select Input Device: None'); return }
     if (!this.inputs[id]) { console.warn('MIDI', `Unknown device with id ${id}`); return }
 
-    this.inputIndex = parseInt(id)
-    this.inputDevice().onmidimessage = (msg) => { this.receive(msg) }
+    this.inputIndex = Math.floor(+id)
+    this.inputDevice().onmidimessage = (msg: WebMidi.MIDIMessageEvent) => { this.receive(msg) }
     console.log('MIDI', `Select Input Device: ${this.inputDevice().name}`)
   }
 
@@ -210,8 +211,7 @@ export class Midi {
     })
   }
 
-  // TODO: arrow?
-  public access(midiAccess) {
+  public access(midiAccess: WebMidi.MIDIAccess) {
     const outputs = midiAccess.outputs.values()
     this.outputs = []
     for (let i = outputs.next(); i && !i.done; i = outputs.next()) {
@@ -229,16 +229,16 @@ export class Midi {
 
   // UI
 
-  public transpose(n, o = 3) {
+  public transpose(n: string, o = 3) {
     if (!transposeTable[n]) { return null }
-    const octave = this.clamp(parseInt(o as unknown as string) + parseInt(transposeTable[n].charAt(1)), 0, 8)
+    const octave = clamp(parseInt(o as unknown as string) + parseInt(transposeTable[n].charAt(1)), 0, 8)
     const note = transposeTable[n].charAt(0)
     const value = ['C', 'c', 'D', 'd', 'E', 'F', 'f', 'G', 'g', 'A', 'a', 'B'].indexOf(note)
-    const id = this.clamp((octave * 12) + value + 24, 0, 127)
+    const id = clamp((octave * 12) + value + 24, 0, 127)
     return { id, value, note, octave }
   }
 
-  public convert(id) {
+  public convert(id: number) {
     const note = ['C', 'c', 'D', 'd', 'E', 'F', 'f', 'G', 'g', 'A', 'a', 'B'][id % 12]
     const octave = Math.floor(id / 12) - 5
     const name = `${note}${octave}`
@@ -263,5 +263,4 @@ export class Midi {
   return this.stack.length
 }
 
-  private clamp(v, min, max) { return v < min ? min : v > max ? max : v }
 }

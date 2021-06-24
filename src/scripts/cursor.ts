@@ -1,6 +1,7 @@
 'use strict'
 
 import { Client } from "./client"
+import { clamp } from "./lib/Util"
 
 export class Cursor {
   client: Client
@@ -40,9 +41,9 @@ export class Cursor {
     document.oncontextmenu = this.onContextMenu
   }
 
-  public select = (x = this.x, y = this.y, w = this.w, h = this.h) => {
+  public select(x = this.x, y = this.y, w = this.w, h = this.h) {
     if (isNaN(x) || isNaN(y) || isNaN(w) || isNaN(h)) { return }
-    const rect = { x: this.clamp(parseInt(x as unknown as string), 0, this.client.orca.w - 1), y: this.clamp(parseInt(y as unknown as string), 0, this.client.orca.h - 1), w: this.clamp(parseInt(w as unknown as string), -this.x, this.client.orca.w - 1), h: this.clamp(parseInt(h as unknown as string), -this.y, this.client.orca.h - 1) }
+    const rect = { x: clamp(parseInt(x as unknown as string), 0, this.client.orca.w - 1), y: clamp(parseInt(y as unknown as string), 0, this.client.orca.h - 1), w: clamp(parseInt(w as unknown as string), -this.x, this.client.orca.w - 1), h: clamp(parseInt(h as unknown as string), -this.y, this.client.orca.h - 1) }
 
     if (this.x === rect.x && this.y === rect.y && this.w === rect.w && this.h === rect.h) {
       return // Don't update when unchanged
@@ -62,23 +63,23 @@ export class Cursor {
     this.ins = false
   }
 
-  public move = (x, y) => {
-    this.select(this.x + parseInt(x), this.y - parseInt(y))
+  public move(x: number, y: number) {
+    this.select(this.x + Math.floor(x), this.y - Math.floor(y))
   }
 
-  public moveTo = (x, y) => {
+  public moveTo(x: number, y: number) {
     this.select(x, y)
   }
 
-  public scale = (w, h) => {
-    this.select(this.x, this.y, this.w + parseInt(w), this.h - parseInt(h))
+  public scale(w: number, h: number) {
+    this.select(this.x, this.y, this.w + Math.floor(w), this.h - Math.floor(h))
   }
 
-  public scaleTo = (w, h) => {
+  public scaleTo(w: number, h: number) {
     this.select(this.x, this.y, w, h)
   }
 
-  public drag = (x, y) => {
+  public drag(x: number, y: number) {
     if (isNaN(x) || isNaN(y)) { return }
     this.ins = false
     const block = this.selection()
@@ -87,14 +88,14 @@ export class Cursor {
     this.client.orca.writeBlock(this.minX, this.minY, block)
     this.client.history.record(this.client.orca.s)
   }
-  public reset = (pos = false) => {
+  public reset(pos = false) {
     this.select(pos ? 0 : this.x, pos ? 0 : this.y, 0, 0)
     this.ins = false
   }
   public read() {
     return this.client.orca.glyphAt(this.x, this.y)
   }
-  public write = (g) => {
+  public write(g: string) {
     if (!this.client.orca.isAllowed(g)) { return }
     if (this.client.orca.write(this.x, this.y, g) && this.ins) {
       this.move(1, 0)
@@ -109,7 +110,7 @@ export class Cursor {
     }
     this.client.history.record(this.client.orca.s)
   }
-  public find = (str) => {
+  public find(str: string) {
     const i = this.client.orca.s.indexOf(str)
     if (i < 0) { return }
     const pos = this.client.orca.posAt(i)
@@ -159,35 +160,35 @@ export class Cursor {
     this.maxX = this.x > this.x + this.w ? this.x : this.x + this.w
     this.maxY = this.y > this.y + this.h ? this.y : this.y + this.h
   }
-  public selected = (x, y, w = 0, h = 0) => {
+  public selected(x: number, y: number, w = 0, h = 0) {
     return x >= this.minX && x <= this.maxX && y >= this.minY && y <= this.maxY
   }
-  public selection = (rect = this.toRect()) => {
+  public selection(rect = this.toRect()) {
     return this.client.orca.getBlock(rect.x, rect.y, rect.w, rect.h)
   }
-  public mouseFrom = null
-  public onMouseDown = (e) => {
+  public mouseFrom: { x: any; y: any } = null
+  public onMouseDown(e: MouseEvent) {
     if (e.button !== 0) { this.cut(); return }
     const pos = this.mousePick(e.clientX, e.clientY)
     this.select(pos.x, pos.y, 0, 0)
     this.mouseFrom = pos
   }
-  public onMouseMove = (e) => {
+  public onMouseMove(e: MouseEvent) {
     if (!this.mouseFrom) { return }
     const pos = this.mousePick(e.clientX, e.clientY)
     this.select(this.mouseFrom.x, this.mouseFrom.y, pos.x - this.mouseFrom.x, pos.y - this.mouseFrom.y)
   }
-  public onMouseUp = (e) => {
+  public onMouseUp(e: MouseEvent) {
     if (this.mouseFrom) {
       const pos = this.mousePick(e.clientX, e.clientY)
       this.select(this.mouseFrom.x, this.mouseFrom.y, pos.x - this.mouseFrom.x, pos.y - this.mouseFrom.y)
     }
     this.mouseFrom = null
   }
-  public mousePick = (x, y, w = this.client.tile.w, h = this.client.tile.h) => {
+  public mousePick(x: number, y: number, w = this.client.tile.w, h = this.client.tile.h) {
     return { x: parseInt((x - 30) / w as unknown as string), y: parseInt((y - 30) / h as unknown as string) }
   }
-  public onContextMenu = (e) => {
+  public onContextMenu(e: { preventDefault: () => void }) {
     e.preventDefault()
   }
   public copy = function () {
@@ -199,15 +200,15 @@ export class Cursor {
   public paste = function (overlap = false) {
     document.execCommand('paste')
   }
-  public onCopy = (e) => {
+  public onCopy(e: { clipboardData: { setData: (arg0: string, arg1: string) => void }; preventDefault: () => void }) {
     e.clipboardData.setData('text/plain', this.selection())
     e.preventDefault()
   }
-  public onCut = (e) => {
+  public onCut(e: any) {
     this.onCopy(e)
     this.erase()
   }
-  public onPaste = (e) => {
+  public onPaste(e: { clipboardData: { getData: (arg0: string) => string }; preventDefault: () => void }) {
     const data = e.clipboardData.getData('text/plain').trim()
     this.client.orca.writeBlock(this.minX, this.minY, data, this.ins)
     this.client.history.record(this.client.orca.s)
@@ -215,5 +216,4 @@ export class Cursor {
     e.preventDefault()
   }
 
-  private clamp(v, min, max) { return v < min ? min : v > max ? max : v }
 }

@@ -1,6 +1,6 @@
 'use strict'
-
-import osc, { Client } from 'node-osc';
+import * as osc from 'node-osc';
+import { Client } from '../../client';
 
 type Options = {
   default: number
@@ -9,14 +9,20 @@ type Options = {
   superCollider: number
   norns: number
 }
+
+export type OscEvent = {
+  path: string,
+  msg: string
+}
+
 export class Osc {
   client: Client
-  stack: Array<any>
-  socket: any
+  stack: Array<OscEvent>
+  socket: osc.Client
   port: number
   options: Options
 
-  constructor(client) {
+  constructor(client: Client) {
     this.client = client 
     this.stack = []
     this.socket = null
@@ -44,18 +50,18 @@ export class Osc {
     }
   }
 
-  public push(path, msg) {
+  public push(path: string, msg: string) {
     this.stack.push({ path, msg })
   }
 
-  public play({ path, msg }) {
+  public play({ path, msg }: {path: string, msg: string}): void {
     if (!this.socket) { console.warn('OSC', 'Unavailable socket'); return }
     const oscMsg = new osc.Message(path)
     for (let i = 0; i < msg.length; i++) {
       // TODO: fix? bug?
       oscMsg.append(this.client.orca.valueOf(msg.charAt(i)))
     }
-    this.socket.send(oscMsg, (err) => {
+    this.socket.send(oscMsg, (err: Error) => {
       if (err) { console.warn(err) }
     })
   }

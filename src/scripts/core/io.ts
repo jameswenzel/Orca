@@ -1,5 +1,3 @@
-'use strict'
-
 import { Client } from '../client'
 import { MidiCC } from './io/cc';
 import { Midi } from './io/midi';
@@ -36,31 +34,31 @@ export class IO {
     this.osc.start()
     this.clear()
   }
-  public clear = function () {
+  public clear() {
     this.midi.clear()
     this.cc.clear()
     this.mono.clear()
     this.udp.clear()
     this.osc.clear()
   }
-  public run = function () {
+  public run() {
     this.midi.run()
     this.cc.run()
     this.mono.run()
     this.udp.run()
     this.osc.run()
   }
-  public silence = function () {
+  public silence() {
     this.midi.silence()
     this.mono.silence()
   }
-  public setIp = function (addr = '127.0.0.1') {
+  public setIp (addr = '127.0.0.1') {
     if (this.validateIP(addr) !== true && addr.indexOf('.local') === -1) { console.warn('IO', 'Invalid IP'); return }
     this.ip = addr
     console.log('IO', 'Set target IP to ' + this.ip)
     this.osc.setup()
   }
-  public length = function () {
+  public length() {
     return this.midi.length() + this.mono.length() + this.cc.stack.length + this.udp.stack.length + this.osc.stack.length
   }
   public inspect(limit = this.client.grid.w) {
@@ -71,6 +69,6 @@ export class IO {
     return this.fill(text, limit, '.')
   }
 
-  private validateIP(addr) { return !!(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(addr)) }
-  private fill(str, len, chr) { while (str.length < len) { str += chr }; return str }
+  private validateIP(addr: string): boolean { return !!(/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(addr)) }
+  private fill(str: string, len: number, chr: string): string { while (str.length < len) { str += chr }; return str }
 }

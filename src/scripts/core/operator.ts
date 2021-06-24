@@ -1,8 +1,12 @@
-'use strict'
-
-import { Client } from "../client"
 import { Orca } from "./orca"
-type PortPorts = [number, number, number, string]
+
+
+type PortType = 0 | 1 | 2 | 3
+type GlyphName = string
+type Xin = number
+type Yin = number
+
+export type PortInfo = [Xin, Yin, PortType, GlyphName]
 
 export interface Clamp {
   min?: number
@@ -56,13 +60,11 @@ type Ports = {
   value?: Clampable,
   msb?: Clampable
   lsb?: Clampable
-
-
   // bang?: boolean
   // [key: string]: Port
 }
 
-export abstract class Operator {
+export abstract class Operator<U> {
   orca: Orca
   name: string
   x: number
@@ -106,13 +108,13 @@ export abstract class Operator {
     return glyph
   }
 
-  public output(g, port = this.ports.output) {
+  public output(g: string, port = this.ports.output) {
     if (!port) { console.warn(this.name, 'Trying to output, but no port'); return }
     if (!g) { return }
     this.orca.write(this.x + port.x, this.y + port.y, this.shouldUpperCase() === true ? `${g}`.toUpperCase() : g)
   }
 
-  public bang(b) {
+  public bang(b: any) {
     if (!this.ports.output) { console.warn(this.name, 'Trying to bang, but no port'); return }
     this.orca.write(this.x + this.ports.output.x, this.y + this.ports.output.y, b ? '*' : '.')
     this.orca.lock(this.x + this.ports.output.x, this.y + this.ports.output.y)
@@ -133,12 +135,12 @@ export abstract class Operator {
       if (this.ports.output.bang === true) {
         this.bang(payload)
       } else {
-        this.output(payload)
+        this.output(payload as unknown as string)
       }
     }
   }
 
-  public abstract operation(force: boolean);
+  public abstract operation(force: boolean): U;
 
   // Helpers
 
@@ -146,7 +148,7 @@ export abstract class Operator {
     this.orca.lock(this.x, this.y)
   }
 
-  public replace(g) {
+  public replace(g: string) {
     this.orca.write(this.x, this.y, g)
   }
 
@@ -169,7 +171,7 @@ export abstract class Operator {
     this.lock()
   }
 
-  public hasNeighbor(g) {
+  public hasNeighbor(g: string) {
     if (this.orca.glyphAt(this.x + 1, this.y) === g) { return true }
     if (this.orca.glyphAt(this.x - 1, this.y) === g) { return true }
     if (this.orca.glyphAt(this.x, this.y + 1) === g) { return true }
@@ -180,18 +182,18 @@ export abstract class Operator {
   // Docs
 
   public addPort<T extends Port>(name: string, pos: T): void {
-    this.ports[name] = pos
+    (this.ports as {[key: string]: Port})[name] = pos
   }
 
-  public getPorts(): Array<PortPorts> {
-    const a = []
+  public getPorts(): PortInfo[] {
+    const a: PortInfo[] = []
     if (this.draw === true) {
       a.push([this.x, this.y, 0, `${this.name.charAt(0).toUpperCase() + this.name.substring(1).toLowerCase()}`])
     }
     if (!this.passive) { return a }
     for (const id in this.ports) {
-      const port = this.ports[id]
-      const type = port.output ? 3 : port.x < 0 || port.y < 0 ? 1 : 2
+      const port = (this.ports as {[key: string]: Port})[id]
+      const type = (port as Output).output ? 3 : ((port.x < 0 || port.y < 0) ? 1 : 2)
       a.push([this.x + port.x, this.y + port.y, type, `${this.glyph}-${id}`])
     }
     return a

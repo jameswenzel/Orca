@@ -1,6 +1,6 @@
 'use strict'
 
-export const transposeTable = {
+export const transposeTable: {[key: string]: string} = {
   A: 'A0',
   a: 'a0',
   B: 'B0',

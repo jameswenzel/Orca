@@ -2,14 +2,15 @@
 
 import { Client } from "../client"
 import { Orca } from "../core/orca"
+import { clamp } from "./Util"
 
 export class History {
 
   client: Client
   index: number
-  frames: Array<any>
+  frames: string[]
   host: Orca
-  key: any
+  key: string
 
   constructor(client: Client) {
     this.client = client
@@ -31,7 +32,7 @@ export class History {
     this.frames = []
   }
 
-  record(data) {
+  record(data: string) {
     if (this.index === this.frames.length) {
       this.append(data)
     } else {
@@ -43,29 +44,29 @@ export class History {
 
   public undo(){
     if (this.index === 0) { console.warn('History', 'Reached beginning'); return }
-    this.index = this.clamp(this.index - 1, 0, this.frames.length - 2)
+    this.index = clamp(this.index - 1, 0, this.frames.length - 2)
     this.apply(this.frames[this.index])
   }
 
   public redo(){
     if (this.index + 1 > this.frames.length - 1) { console.warn('History', 'Reached end'); return }
-    this.index = this.clamp(this.index + 1, 0, this.frames.length - 1)
+    this.index = clamp(this.index + 1, 0, this.frames.length - 1)
     this.apply(this.frames[this.index])
   }
 
-  public apply(f) {
-    if (!this.host[this.key]) { console.log(`Unknown binding to key ${this.key}`); return }
-    if (!f || f.length !== this.host[this.key].length) { return }
-    this.host[this.key] = this.frames[this.index]
+  public apply(f: string) {
+    if (!(this.host as unknown as {[key: string]: string})[this.key]) { console.log(`Unknown binding to key ${this.key}`); return }
+    if (!f || f.length !== (this.host as unknown as {[key: string]: string})[this.key].length) { return }
+    (this.host as unknown as {[key: string]: string})[this.key] = this.frames[this.index]
   }
 
-  public append(data) {
+  public append(data: string) {
     if (!data) { return }
     if (this.frames[this.index - 1] && this.frames[this.index - 1] === data) { return }
     this.frames.push(data)
   }
 
-  public fork(data) {
+  public fork(data: string) {
     this.frames = this.frames.slice(0, this.index + 1)
     this.append(data)
   }
@@ -83,6 +84,4 @@ export class History {
     return this.frames.length
   }
 
-  // TODO: make this a helper
-  private clamp (v, min, max) { return v < min ? min : v > max ? max : v }
 }

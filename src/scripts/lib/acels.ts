@@ -1,19 +1,31 @@
 'use strict'
 
+import { MenuItemConstructorOptions } from "electron"
 import { Pipe } from "stream"
 import { Client } from "../client"
 import { Commander } from "../commander"
+import * as app from "./app"
+
+type Accelerator = {
+  cat: string,
+  name: string,
+  accelerator?: string
+  downfn?: () => void
+  upfn?: () => void
+  role?: string
+  type?: string
+}
 
 export class Acels {
   client: Client
-  all: Object
-  roles: Object
+  all: {[key: string]: Accelerator}
+  // roles: {[key: string]: Accelerator}
   pipe: Commander
 
   constructor(client: Client) {
     this.client = client;
     this.all = {}
-    this.roles = {}
+    // this.roles = {}
     this.pipe = null
   }
 
@@ -23,21 +35,21 @@ export class Acels {
     host.addEventListener('keyup', this.onKeyUp, false)
   }
 
-  public set(cat, name, accelerator, downfn, upfn?) {
+  public set(cat: string, name: string, accelerator: string, downfn: () => void, upfn?: () => void) {
     if (this.all[accelerator]) { console.warn('Acels', `Trying to overwrite ${this.all[accelerator].name}, with ${name}.`) }
     this.all[accelerator] = { cat, name, downfn, upfn, accelerator }
   }
 
-  public add(cat, role) {
+  public add(cat: string, role: string) {
     this.all[':' + role] = { cat, name: role, role }
   }
 
-  public get(accelerator) {
+  public get(accelerator: string | number) {
     return this.all[accelerator]
   }
 
-  public sort() {
-    const h = {}
+  public sort(): {[key: string]: Accelerator[]} {
+    const h: {[key: string]: Accelerator[]} = {}
     for (const item of Object.values(this.all)) {
       if (!h[item.cat]) { h[item.cat] = [] }
       h[item.cat].push(item)
@@ -45,7 +57,7 @@ export class Acels {
     return h
   }
 
-  public convert(event) {
+  public convert(event: KeyboardEvent) {
     const accelerator = event.key === ' ' ? 'Space' : event.key.substr(0, 1).toUpperCase() + event.key.substr(1)
     if ((event.ctrlKey || event.metaKey) && event.shiftKey) {
       return `CmdOrCtrl+Shift+${accelerator}`
@@ -66,14 +78,14 @@ export class Acels {
     this.pipe = obj
   }
 
-  public onKeyDown(e) {
+  public onKeyDown(e: KeyboardEvent) {
     const target = this.get(this.convert(e))
     if (!target || !target.downfn) { return this.pipe ? this.pipe.onKeyDown(e) : null }
     target.downfn()
     e.preventDefault()
   }
 
-  public onKeyUp = (e) => {
+  public onKeyUp(e: KeyboardEvent){
     const target = this.get(this.convert(e))
     if (!target || !target.upfn) { return this.pipe ? this.pipe.onKeyUp(e) : null }
     target.upfn()
@@ -107,8 +119,7 @@ export class Acels {
   // Electron specifics
 
   public inject(name = 'Untitled') {
-    const app = require('electron').remote.app
-    const injection = []
+    const injection: Electron.MenuItemConstructorOptions[] = []
 
     injection.push({
       label: name,
@@ -132,11 +143,13 @@ export class Acels {
 
     const sorted = this.sort()
     for (const cat of Object.keys(sorted)) {
-      const submenu = []
+      const submenu: MenuItemConstructorOptions[] = []
       for (const option of sorted[cat]) {
         if (option.role) {
+          // @ts-ignore
           submenu.push({ role: option.role })
         } else if (option.type) {
+          // @ts-ignore
           submenu.push({ type: option.type })
         } else {
           submenu.push({ label: option.name, accelerator: option.accelerator, click: option.downfn })

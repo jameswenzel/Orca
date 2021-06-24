@@ -1,21 +1,21 @@
 'use strict'
-import dgram from 'dgram';
+import * as dgram from 'dgram';
 import { Client } from '../../client';
 
 
-export class Udp  {
-  stack: Array<any>
+export class Udp {
+  stack: Array<string>
   port: number
   socket: dgram.Socket
   listener: dgram.Socket
   client: Client
 
-  constructor(client) {
-  this.stack = []
-  this.port = null
-  this.socket = dgram ? dgram.createSocket('udp4') : null
-  this.listener = dgram ? dgram.createSocket('udp4') : null
-  this.client = client
+  constructor(client: Client) {
+    this.stack = []
+    this.port = null
+    this.socket = dgram ? dgram.createSocket('udp4') : null
+    this.listener = dgram ? dgram.createSocket('udp4') : null
+    this.client = client
   }
 
   public start() {
@@ -26,21 +26,21 @@ export class Udp  {
     this.selectOutput()
   }
 
-  public clear(){
+  public clear() {
     this.stack = []
   }
 
-  public run(){
+  public run() {
     for (const item of this.stack) {
       this.play(item)
     }
   }
 
-  public push = function (msg) {
+  public push(msg: string) {
     this.stack.push(msg)
   }
 
-  public play = function (data) {
+  public play(data: string) {
     if (!this.socket) { return }
     this.socket.send(Buffer.from(`${data}`), this.port, this.client.io.ip, (err) => {
       if (err) { console.warn(err) }

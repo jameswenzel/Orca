@@ -80,13 +80,14 @@ export class Theme {
     const input = document.createElement('input')
     input.type = 'file'
     input.onchange = (e) => {
-      this.read((e as unknown as HasEventTargetWithFiles).target.files[0], this.load)
+      // does this conversion work?
+      this.read((e as unknown as HasEventTargetWithFiles).target.files[0] as unknown as Blob, this.load)
     }
     input.click()
   }
 
-  public load(data) {
-    const theme = this.parse(data)
+  public load(data: string | Object) {
+    const theme = this.parse(data as ThemeProperties)
     if (!this.isValid(theme)) { console.warn('Theme', 'Invalid format'); return }
     console.log('Theme', 'Loaded theme!')
     this.el.innerHTML = `:root { 
@@ -111,32 +112,33 @@ export class Theme {
     this.load(this.default)
   }
 
-  public set = (key, val) => {
+  public set (key: string, val: any) {
     if (!val) { return }
     const hex = (`${val}`.substr(0, 1) !== '#' ? '#' : '') + `${val}`
     if (!this.isColor(hex)) { console.warn('Theme', `${hex} is not a valid color.`); return }
-    this.active[key] = hex
+    (this.active as {[key: string]: string})[key] = hex
   }
 
+  // bug: duplicate
   // public read = (key) => {
   //   return this.active[key]
   // }
 
-  public parse = (any) => {
-    if (this.isValid(any)) { return any }
-    if (this.isJson(any)) { return JSON.parse(any) }
-    if (this.isHtml(any)) { return this.extract(any) }
+  public parse (any: ThemeProperties | string): ThemeProperties {
+    if (this.isValid(any as ThemeProperties)) { return any as ThemeProperties }
+    if (this.isJson(any as string)) { return JSON.parse(any as string) }
+    if (this.isHtml(any as string)) { return this.extract(any as string) }
   }
 
   // Drag
 
-  public drag = (e) => {
+  public drag (e: DragEvent) {
     e.stopPropagation()
     e.preventDefault()
     e.dataTransfer.dropEffect = 'copy'
   }
 
-  public drop(e) {
+  public drop(e: DragEvent) {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (file.name.indexOf('.svg') > -1) {
@@ -145,7 +147,7 @@ export class Theme {
     e.stopPropagation()
   }
 
-  public read(file, callback) {
+  public read(file: Blob, callback: { (data: string | ArrayBuffer): void}) {
     const reader = new FileReader()
     reader.onload = (event) => {
       callback(event.target.result)
@@ -155,7 +157,7 @@ export class Theme {
 
 // Helpers
 
-private extract(xml) {
+private extract(xml: string) {
   const svg = new DOMParser().parseFromString(xml, 'text/xml')
   try {
     return {
@@ -174,7 +176,7 @@ private extract(xml) {
   }
 }
 
-private isValid(json) {
+private isValid(json: ThemeProperties) {
   if (!json) { return false }
   if (!json.background || !this.isColor(json.background)) { return false }
   if (!json.f_high || !this.isColor(json.f_high)) { return false }
@@ -188,15 +190,15 @@ private isValid(json) {
   return true
 }
 
-private isColor(hex) {
+private isColor(hex: string) {
   return /^#([0-9A-F]{3}){1,2}$/i.test(hex)
 }
 
-private isJson(text) {
+private isJson(text: string) {
   try { JSON.parse(text); return true } catch (error) { return false }
 }
 
-private isHtml(text) {
+private isHtml(text: string) {
   try { new DOMParser().parseFromString(text, 'text/xml'); return true } catch (error) { return false }
 }
 }

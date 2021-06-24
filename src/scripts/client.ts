@@ -1,6 +1,6 @@
 import { Clock } from "./clock"
 import { Commander } from "./commander"
-import { Library } from "./core/Library2"
+import { Library, LibraryType } from "./core/Library"
 import { Orca } from "./core/orca"
 import { Cursor } from "./cursor"
 import { Acels } from "./lib/acels"
@@ -8,7 +8,7 @@ import { History } from "./lib/history"
 import { Source } from "./lib/source"
 import { Theme } from "./lib/theme"
 import { IO } from './core/io'
-import { Operator } from "./core/operator"
+import { Operator, PortInfo } from "./core/operator"
 
 type Grid = {
   w: number
@@ -34,8 +34,7 @@ export class Client {
   guide: boolean
   el: HTMLCanvasElement
   context: CanvasRenderingContext2D
-  library;
-  ports: any[]
+  ports: PortInfo[]
 
 
   constructor() {
@@ -85,13 +84,17 @@ export class Client {
       }
     })
 
-    window.onresize = (e) => {
+    // bug??
+    // window.onresize((_e: any) => {
+    //   this.resize()
+    // })
+    window.addEventListener('resize', e => {
       this.resize()
-    }
+    })
 
   }
 
-  public install(host) {
+  public install(host: HTMLElement) {
     host.appendChild(this.el)
     this.theme.install(host)
 
@@ -178,7 +181,7 @@ export class Client {
     this.acels.setPipe(this.commander)
   }
 
-  public start = () => {
+  public start() {
     console.info('Client', 'Starting..')
     console.info(`${this.acels}`)
     this.theme.start()
@@ -196,7 +199,7 @@ export class Client {
     this.toggleGuide()
   }
 
-  public reset = () => {
+  public reset() {
     this.orca.reset()
     this.resize()
     this.source.new()
@@ -205,7 +208,7 @@ export class Client {
     this.clock.play()
   }
 
-  public run = () => {
+  public run() {
     this.io.clear()
     this.clock.run()
     this.orca.run()
@@ -213,7 +216,7 @@ export class Client {
     this.update()
   }
 
-  public update = () => {
+  public update() {
     if (document.hidden === true) { return }
     this.clear()
     this.ports = this.findPorts()
@@ -222,7 +225,7 @@ export class Client {
     this.drawGuide()
   }
 
-  public whenOpen = (file, text) => {
+  public whenOpen(_file: any, text: string) {
     const lines = text.trim().split(/\r?\n/)
     const w = lines[0].length
     const h = lines.length
@@ -234,19 +237,19 @@ export class Client {
     this.resize()
   }
 
-  public setGrid = (w, h) => {
+  public setGrid(w: number, h: number) {
     this.grid.w = w
     this.grid.h = h
     this.update()
   }
 
-  public toggleRetina = () => {
+  public toggleRetina() {
     this.scale = this.scale === 1 ? window.devicePixelRatio : 1
     console.log('Client', `Pixel resolution: ${this.scale}`)
     this.resize(/*true*/)
   }
 
-  public toggleGuide = (force = null) => {
+  public toggleGuide(force: boolean = null) {
     const display = force !== null ? force : this.guide !== true
     if (display === this.guide) { return }
     console.log('Client', `Toggle Guide: ${display}`)
@@ -254,13 +257,13 @@ export class Client {
     this.update()
   }
 
-  public modGrid = (x = 0, y = 0) => {
+  public modGrid(x = 0, y = 0) {
     const w = this.clamp(this.grid.w + x, 4, 16)
     const h = this.clamp(this.grid.h + y, 4, 16)
     this.setGrid(w, h)
   }
 
-  public modZoom = (mod = 0, reset = false) => {
+  public modZoom(mod = 0, reset = false) {
     this.tile = {
       w: reset ? 10 : this.tile.w * (mod + 1),
       h: reset ? 15 : this.tile.h * (mod + 1),
@@ -274,27 +277,27 @@ export class Client {
 
   //
 
-  public isCursor = (x, y) => {
+  public isCursor(x: number, y: number) {
     return x === this.cursor.x && y === this.cursor.y
   }
 
-  public isMarker = (x, y) => {
+  public isMarker(x: number, y: number) {
     return x % this.grid.w === 0 && y % this.grid.h === 0
   }
 
-  public isNear = (x, y) => {
+  public isNear(x: number, y: number) {
     return x > (parseInt(this.cursor.x / this.grid.w as unknown as string) * this.grid.w) - 1 && x <= ((1 + parseInt(this.cursor.x / this.grid.w as unknown as string)) * this.grid.w) && y > (parseInt(this.cursor.y / this.grid.h as unknown as string) * this.grid.h) - 1 && y <= ((1 + parseInt(this.cursor.y / this.grid.h as unknown as string)) * this.grid.h)
   }
 
-  public isLocals = (x, y) => {
+  public isLocals(x: number, y: number) {
     return this.isNear(x, y) === true && (x % (this.grid.w / 4) === 0 && y % (this.grid.h / 4) === 0) === true
   }
 
-  public isInvisible = (x, y) => {
+  public isInvisible(x: number, y: number) {
     return this.orca.glyphAt(x, y) === '.' && !this.isMarker(x, y) && !this.cursor.selected(x, y) && !this.isLocals(x, y) && !this.ports[this.orca.indexAt(x, y)] && !this.orca.lockAt(x, y)
   }
 
-  public findPorts = () => {
+  public findPorts(): PortInfo[] {
     const a = new Array((this.orca.w * this.orca.h) - 1)
     for (const operator of this.orca.runtime) {
       if (this.orca.lockAt(operator.x, operator.y)) { continue }
@@ -309,7 +312,7 @@ export class Client {
 
   // Interface
 
-  public makeTheme = (type) => {
+  public makeTheme(type: number) {
     // Operator
     if (type === 0) { return { bg: this.theme.active.b_med, fg: this.theme.active.f_low } }
     // Haste
@@ -340,11 +343,11 @@ export class Client {
 
   // Canvas
 
-  public clear = () => {
+  public clear() {
     this.context.clearRect(0, 0, this.el.width, this.el.height)
   }
 
-  public drawProgram = () => {
+  public drawProgram() {
     const selection = this.cursor.read()
     for (let y = 0; y < this.orca.h; y++) {
       for (let x = 0; x < this.orca.w; x++) {
@@ -360,7 +363,7 @@ export class Client {
     }
   }
 
-  public makeStyle = (x, y, glyph, selection) => {
+  public makeStyle(x: number, y: number, glyph: string, selection: string): number {
     if (this.cursor.selected(x, y)) { return 4 }
     const isLocked = this.orca.lockAt(x, y)
     if (selection === glyph && isLocked === false && selection !== '.') { return 6 }
@@ -371,7 +374,7 @@ export class Client {
     return 20
   }
 
-  public drawInterface = () => {
+  public drawInterface() {
     this.write(`${this.cursor.inspect()}`, this.grid.w * 0, this.orca.h, this.grid.w - 1)
     this.write(`${this.cursor.x},${this.cursor.y}${this.cursor.ins ? '+' : ''}`, this.grid.w * 1, this.orca.h, this.grid.w, this.cursor.ins ? 1 : 2)
     this.write(`${this.cursor.w}:${this.cursor.h}`, this.grid.w * 2, this.orca.h, this.grid.w)
@@ -391,22 +394,22 @@ export class Client {
     }
   }
 
-  public drawGuide = () => {
+  public drawGuide(){
     if (this.guide !== true) { return }
-    const operators = Object.keys(Library)//.filter((val) => { return isNaN(val) })
+    const operators: (keyof LibraryType)[] = (Object.keys(Library).filter((val) => { return isNaN(+val) })) as (keyof LibraryType)[] 
     for (const id in operators) {
-      const key = operators[id]
-      const oper: Operator = new Library[key]() as Operator
+      const key: keyof LibraryType = operators[id] as keyof LibraryType
+      const oper: Operator<any> = new Library[key](null, null, null, null) as Operator<any>
       const text = oper.info
       const frame = this.orca.h - 4
-      const x = (Math.floor(parseInt(id) / frame) * 32) + 2
-      const y = (parseInt(id) % frame) + 2
-      this.write(key, x, y, 99, 3)
+      const x = Math.floor(parseInt(id) / frame) * 32 + 2
+      const y = parseInt(id) % frame + 2
+      this.write(key as string, x, y, 99, 3)
       this.write(text, x + 2, y, 99, 10)
     }
   }
 
-  public drawSprite = (x, y, g, type) => {
+  public drawSprite(x: number, y: number, g: string, type: number){
     const theme = this.makeTheme(type)
     if (theme.bg) {
       this.context.fillStyle = theme.bg
@@ -418,7 +421,7 @@ export class Client {
     }
   }
 
-  public write = (text, offsetX, offsetY, limit = 50, type = 2) => {
+  public write(text: string, offsetX: number, offsetY: number, limit = 50, type = 2)  {
     for (let x = 0; x < text.length && x < limit; x++) {
       this.drawSprite(offsetX + x, offsetY, text.substr(x, 1), type)
     }
@@ -426,7 +429,7 @@ export class Client {
 
   // Resize tools
 
-  public resize = () => {
+  public resize()  {
     const pad = 30
     const size = { w: window.innerWidth - (pad * 2), h: window.innerHeight - ((pad * 2) + this.tile.h * 2) }
     const tiles = { w: Math.ceil(size.w / this.tile.w), h: Math.ceil(size.h / this.tile.h) }
@@ -443,7 +446,7 @@ export class Client {
     if (this.cursor.y >= tiles.h) { this.cursor.moveTo(this.cursor.x, tiles.h - 1) }
 
     const w = this.tile.ws * this.orca.w
-    const h = (this.tile.hs + (this.tile.hs / 5)) * this.orca.h
+    const h: number = this.tile.hs + (this.tile.hs / 5) * this.orca.h
 
     if (w === this.el.width && h === this.el.height) { return }
 
@@ -460,7 +463,7 @@ export class Client {
     this.update()
   }
 
-  public crop = (w, h) => {
+  public crop(w: number, h: number) {
     let block = `${this.orca}`
 
     if (h > this.orca.h) {
@@ -481,12 +484,12 @@ export class Client {
 
   // Docs
 
-  public docs = () => {
+  public docs() {
     let html = ''
-    const operators = Object.keys(Library)//.filter((val) => { return isNaN(val) })
+    const operators: (keyof LibraryType)[] = (Object.keys(Library).filter((val) => { return isNaN(+val) })) as (keyof LibraryType)[] 
     for (const id in operators) {
-      const oper = new Library[operators[id]]() as Operator
-      // there is no input property on ports??
+      const oper: Operator<any> = new Library[operators[id]](null, null, null, null)
+      // TODO: there is no input property on ports??
       // const ports = oper.ports.input ? Object.keys(oper.ports.input).reduce((acc, key, val) => { return acc + ' ' + key }, '') : ''
       const ports: string = '';
       html += `- \`${oper.glyph.toUpperCase()}\` **${oper.name}**${ports !== '' ? '(' + ports.trim() + ')' : ''}: ${oper.info}.\n`
@@ -496,7 +499,7 @@ export class Client {
 
   // Helpers
 
-  private display(str, f, max) { return str.length < max ? str : str.slice(f % str.length) + str.substr(0, f % str.length) }
-  private clamp(v, min, max) { return v < min ? min : v > max ? max : v }
+  private display(str: string, f: number, max: number) { return str.length < max ? str : str.slice(f % str.length) + str.substr(0, f % str.length) }
+  private clamp(v: number, min: number, max: number) { return v < min ? min : v > max ? max : v }
 
 }

@@ -14,7 +14,7 @@ type HasEventTargetWithFiles = {
 
 export class Source {
   client: Client
-  cache: Object
+  cache: {[key: string]: string | ArrayBuffer}
 
   constructor(client: Client) {
     this.client = client;
@@ -34,7 +34,7 @@ export class Source {
     this.cache = {}
   }
 
-  public open(ext, callback, store = false) {
+  public open(ext: string, callback: (file: any, text: any) => void, store = false) {
     console.log('Source', 'Open file..')
     const input = document.createElement('input')
     input.type = 'file'
@@ -46,7 +46,7 @@ export class Source {
     input.click()
   }
 
-  public load(ext, callback?) {
+  public load(ext: string, callback?: undefined) {
     console.log('Source', 'Load files..')
     const input = document.createElement('input')
     input.type = 'file'
@@ -60,24 +60,26 @@ export class Source {
     input.click()
   }
 
-  public store(file, content) {
+  public store(file: File, content: ArrayBuffer | string) {
     console.info('Source', 'Stored ' + file.name)
     this.cache[file.name] = content
   }
 
-  public save(name, content, type = 'text/plain', callback) {
+
+  // bug: callback is not a callback
+  public save(name: string, content: string, type = 'text/plain', callback: string) {
     this.saveAs(name, 'orca', content, type, callback)
   }
 
-  // bug
-  public saveAs(name, ext, content, type = 'text/plain', callback) {
+  // bug: callback is not a callback
+  public saveAs(name: string, ext: string, content: any, type = 'text/plain', callback: string) {
     console.log('Source', 'Save new file..')
     this.write(name, ext, content, type, callback)
   }
 
   // I/O
 
-  public read(file, callback, store = false) {
+  public read(file: File, callback: (arg1: Blob, arg2: ArrayBuffer | string) => void, store = false) {
     const reader = new FileReader()
     reader.onload = (event) => {
       const res = event.target.result
@@ -87,7 +89,7 @@ export class Source {
     reader.readAsText(file, 'UTF-8')
   }
 
-  public write(name, ext, content, type, settings = 'charset=utf-8') {
+  public write(name: string, ext: string, content: string, type: string, settings = 'charset=utf-8') {
     const link = document.createElement('a')
     link.setAttribute('download', `${name}-${this.timestamp()}.${ext}`)
     if (type === 'image/png' || type === 'image/jpeg') {

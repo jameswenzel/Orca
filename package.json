@@ -24,7 +24,10 @@
     "push": "npm run build ; npm run push_osx ; npm run push_linux ; npm run push_win ; npm run clean ; npm run status"
   },
   "devDependencies": {
-    "electron": "^8.5.3",
+    "@types/node": "^12.12.30",
+    "@types/node-osc": "^6.0.0",
+    "@types/webmidi": "^2.0.4",
+    "electron": "^8.5.5",
     "electron-packager": "^15.1.0"
   },
   "dependencies": {

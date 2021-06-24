@@ -3,7 +3,8 @@
         "webmidi"
     ],
     "compilerOptions": {
-        "module": "commonjs",
+        "module": "ES2015",
+        "target": "ES2015",
         "noImplicitAny": true,
         "sourceMap": true,
         "outDir": "dist",
@@ -12,7 +13,8 @@
             "*": [
                 "node_modules/*"
             ]
-        }
+        },
+        "moduleResolution": "node"
     },
     "include": [
         "src/**/*"
